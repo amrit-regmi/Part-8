@@ -41,8 +41,10 @@ const typeDefs = gql`
     id: ID!
   }
   
-  type Token {
-    value: String!
+  type LoggedInUser {
+    token: String!
+    username: String!
+    favouriteGenre: String!
   }
 
 
@@ -76,7 +78,7 @@ const typeDefs = gql`
     login(
       username: String!
       password: String!
-    ): Token
+    ): LoggedInUser
   }
 `
 const resolvers = {
@@ -117,7 +119,6 @@ const resolvers = {
   Book:{
     author: async(root) => {
       const author = await Author.findById(root.author)
-      console.log (author)
       
       return {
         name: author.name,
@@ -152,10 +153,10 @@ const resolvers = {
 
       let author = await Author.findOne({name:args.author})
       if (!author){
-        const author = new Author({name:args.author})
+        author = new Author({name:args.author})
         await author.save()
       }
-         
+      console.log(author.id)
       const book = new Book({...args, author: author.id})
       await book.save()
       return book
@@ -196,13 +197,13 @@ const resolvers = {
 
     login: async(root,args) => {
       const user = await User.findOne({username:args.username})
-      console.log(user)
+    
 
       if(!user || args.password !=='secret'){
         throw new UserInputError('Wrong credentials')
       }
 
-      return {value: jwt.sign({username: user.username, id:user.id},JWT_SECRET) }
+      return {token: jwt.sign({username: user.username, id:user.id},JWT_SECRET),username:user.username,favouriteGenre:user.favouriteGenre  }
 
     }
   }
