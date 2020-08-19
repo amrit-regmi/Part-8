@@ -1,5 +1,6 @@
-import { useQuery,useLazyQuery} from '@apollo/client';  
+import { useQuery,useLazyQuery,useSubscription,useApolloClient} from '@apollo/client';  
 import {ALL_AUTHORS,ALL_BOOKS}  from './graphql/queries'
+import {BOOK_ADDED} from './graphql/subscriptions'
 import React, { useState,useEffect } from 'react'
 import Authors from './components/Authors'
 import Books from './components/Books'
@@ -9,8 +10,9 @@ import Notification from './components/Notification'
 import Recommend from './components/Recommend';
 
 
-
 const App = () => {
+const client = useApolloClient()
+
   const [page, setPage] = useState('authors')
   const [user,setUser] = useState('')
   const [notification,setNotification] = useState('')
@@ -19,6 +21,27 @@ const App = () => {
   const authors=  useQuery(ALL_AUTHORS)
   const [getBooks,books] = useLazyQuery(ALL_BOOKS)
   const [getRecomended,recomended] = useLazyQuery(ALL_BOOKS)
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      window.alert(`New book ${subscriptionData.data.bookAdded.title} by ${subscriptionData.data.bookAdded.author.name} added `)
+      updateCacheWith(subscriptionData.data.bookAdded)
+    }
+  })
+
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) => 
+      set.map(p => p.id).includes(object.id)  
+
+    const dataInStore = client.readQuery({ query: ALL_BOOKS })
+
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks : dataInStore.allBooks.concat(addedBook) }
+      })
+    }   
+  }
 
 
   const booksPage = () => {
